@@ -24,24 +24,30 @@ class ChatRepository(context: Context) {
         reasoningEffort: String = "high",
         sessionId: String = "default"
     ): Result<String> {
+        val trimmed = userContent.take(MAX_USER_CHARS)
         dao.insertMessage(
             ChatMessageEntity(
                 role = "user",
-                content = userContent,
+                content = trimmed,
                 sessionId = sessionId
             )
         )
 
         val history = dao.getMessagesOnce(sessionId)
+        val recent = if (history.size > MAX_HISTORY_MESSAGES) {
+            history.takeLast(MAX_HISTORY_MESSAGES)
+        } else {
+            history
+        }
+
         val apiMessages = mutableListOf<Message>()
-
         apiMessages.add(Message(role = "system", content = systemPrompt))
-
-        history.forEach { entity ->
+        recent.forEach { entity ->
+            if (entity.role == "system") return@forEach
             apiMessages.add(
                 Message(
                     role = entity.role,
-                    content = entity.content,
+                    content = entity.content.take(MAX_USER_CHARS),
                     reasoning = entity.reasoning
                 )
             )
@@ -59,13 +65,11 @@ class ChatRepository(context: Context) {
                 authorization = "Bearer $apiKey",
                 request = request
             )
-
             if (response.isSuccessful) {
                 val body = response.body()
                 val choice = body?.choices?.firstOrNull()
                 val assistantContent = choice?.message?.content ?: "（応答が空でした）"
                 val reasoning = choice?.message?.reasoning
-
                 dao.insertMessage(
                     ChatMessageEntity(
                         role = "assistant",
@@ -92,11 +96,16 @@ class ChatRepository(context: Context) {
         dao.insertDocument(
             DocumentEntity(
                 title = title,
-                extractedText = text,
+                extractedText = text.take(MAX_USER_CHARS),
                 sourceType = sourceType
             )
         )
     }
 
     fun documentsFlow(): Flow<List<DocumentEntity>> = dao.getDocuments()
+
+    companion object {
+        const val MAX_HISTORY_MESSAGES = 20
+        const val MAX_USER_CHARS = 12_000
+    }
 }
