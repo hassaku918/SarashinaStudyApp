@@ -6,10 +6,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -17,34 +21,51 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.sarashina.study.ui.theme.ThemeMode
+
+data class LockSettingsState(
+    val enabled: Boolean,
+    val useBiometric: Boolean,
+    val hasPin: Boolean,
+    val canBiometric: Boolean
+)
 
 @Composable
 fun SettingsDialog(
     currentApiKey: String,
     currentEffort: String,
     currentThemeMode: ThemeMode,
+    lockState: LockSettingsState,
     onDismiss: () -> Unit,
     onSaveApiKey: (String) -> Unit,
     onSaveEffort: (String) -> Unit,
-    onSaveThemeMode: (ThemeMode) -> Unit
+    onSaveThemeMode: (ThemeMode) -> Unit,
+    onSaveLock: (enabled: Boolean, useBiometric: Boolean, newPin: String?) -> Unit
 ) {
     var apiKey by remember { mutableStateOf(currentApiKey) }
     var effort by remember { mutableStateOf(currentEffort) }
     var themeMode by remember { mutableStateOf(currentThemeMode) }
+    var lockEnabled by remember { mutableStateOf(lockState.enabled) }
+    var useBiometric by remember { mutableStateOf(lockState.useBiometric) }
+    var newPin by remember { mutableStateOf("") }
+    var pinConfirm by remember { mutableStateOf("") }
+    var pinError by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("設定") },
         text = {
-            Column {
-                Text(
-                    "テーマ",
-                    style = MaterialTheme.typography.labelLarge
-                )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text("テーマ", style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.height(8.dp))
                 Row {
                     listOf(
@@ -62,13 +83,9 @@ fun SettingsDialog(
                 }
 
                 Spacer(Modifier.height(20.dp))
-
+                Text("Sarashina API Key", style = MaterialTheme.typography.labelLarge)
                 Text(
-                    "Sarashina API Key",
-                    style = MaterialTheme.typography.labelLarge
-                )
-                Text(
-                    "https://sarashina.ai でGoogleログイン後、APIキーを発行してください（無償ベータ）",
+                    "暗号化して端末に保存します",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -83,16 +100,7 @@ fun SettingsDialog(
                 )
 
                 Spacer(Modifier.height(20.dp))
-
-                Text(
-                    "推論の深さ (reasoning_effort)",
-                    style = MaterialTheme.typography.labelLarge
-                )
-                Text(
-                    "high = 最も深い思考（数学・難問向け）",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text("推論の深さ", style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.height(8.dp))
                 Row {
                     listOf("low", "medium", "high").forEach { level ->
@@ -104,22 +112,88 @@ fun SettingsDialog(
                         )
                     }
                 }
+
+                Spacer(Modifier.height(24.dp))
+                Text("アプリロック", style = MaterialTheme.typography.labelLarge)
+                Text(
+                    "起動時・バックグラウンド復帰時にロック。生体認証（指紋・顔）や端末PIN、アプリPINに対応。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("ロックを有効にする", modifier = Modifier.weight(1f))
+                    Switch(checked = lockEnabled, onCheckedChange = { lockEnabled = it })
+                }
+                if (lockEnabled && lockState.canBiometric) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("生体認証 / 端末PIN", modifier = Modifier.weight(1f))
+                        Switch(checked = useBiometric, onCheckedChange = { useBiometric = it })
+                    }
+                }
+                if (lockEnabled) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        if (lockState.hasPin) "PINを変更（空欄で据え置き）" else "アプリPINを設定（4〜8桁）",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    OutlinedTextField(
+                        value = newPin,
+                        onValueChange = { if (it.length <= 8 && it.all { c -> c.isDigit() }) newPin = it },
+                        label = { Text("新しいPIN") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = pinConfirm,
+                        onValueChange = { if (it.length <= 8 && it.all { c -> c.isDigit() }) pinConfirm = it },
+                        label = { Text("PIN確認") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (pinError != null) {
+                        Text(pinError!!, color = MaterialTheme.colorScheme.error)
+                    }
+                }
             }
         },
         confirmButton = {
             TextButton(onClick = {
+                if (lockEnabled && newPin.isNotEmpty()) {
+                    if (newPin.length !in 4..8) {
+                        pinError = "PINは4〜8桁"
+                        return@TextButton
+                    }
+                    if (newPin != pinConfirm) {
+                        pinError = "PINが一致しません"
+                        return@TextButton
+                    }
+                }
+                if (lockEnabled && !lockState.hasPin && newPin.isEmpty() && !(useBiometric && lockState.canBiometric)) {
+                    pinError = "PINを設定するか、生体認証を有効にしてください"
+                    return@TextButton
+                }
                 onSaveApiKey(apiKey)
                 onSaveEffort(effort)
                 onSaveThemeMode(themeMode)
+                onSaveLock(lockEnabled, useBiometric, newPin.ifBlank { null })
                 onDismiss()
             }) {
                 Text("保存")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("キャンセル")
-            }
+            TextButton(onClick = onDismiss) { Text("キャンセル") }
         }
     )
 }
