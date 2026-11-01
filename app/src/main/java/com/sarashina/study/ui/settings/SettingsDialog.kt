@@ -40,21 +40,31 @@ fun SettingsDialog(
     currentApiKey: String,
     currentEffort: String,
     currentThemeMode: ThemeMode,
+    currentFontScale: String,
+    currentSystemPrompt: String,
+    currentAutoBiometric: Boolean,
     lockState: LockSettingsState,
     onDismiss: () -> Unit,
     onSaveApiKey: (String) -> Unit,
     onSaveEffort: (String) -> Unit,
     onSaveThemeMode: (ThemeMode) -> Unit,
+    onSaveFontScale: (String) -> Unit,
+    onSaveSystemPrompt: (String) -> Unit,
+    onSaveAutoBiometric: (Boolean) -> Unit,
     onSaveLock: (enabled: Boolean, useBiometric: Boolean, newPin: String?) -> Unit
 ) {
     var apiKey by remember { mutableStateOf(currentApiKey) }
     var effort by remember { mutableStateOf(currentEffort) }
     var themeMode by remember { mutableStateOf(currentThemeMode) }
+    var fontScale by remember { mutableStateOf(currentFontScale) }
+    var systemPrompt by remember { mutableStateOf(currentSystemPrompt) }
+    var autoBiometric by remember { mutableStateOf(currentAutoBiometric) }
     var lockEnabled by remember { mutableStateOf(lockState.enabled) }
     var useBiometric by remember { mutableStateOf(lockState.useBiometric) }
     var newPin by remember { mutableStateOf("") }
     var pinConfirm by remember { mutableStateOf("") }
     var pinError by remember { mutableStateOf<String?>(null) }
+    var showPromptEditor by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -65,8 +75,7 @@ fun SettingsDialog(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
             ) {
-                Text("テーマ", style = MaterialTheme.typography.labelLarge)
-                Spacer(Modifier.height(8.dp))
+                Section("テーマ")
                 Row {
                     listOf(
                         ThemeMode.SYSTEM to "システム",
@@ -82,14 +91,22 @@ fun SettingsDialog(
                     }
                 }
 
-                Spacer(Modifier.height(20.dp))
-                Text("Sarashina API Key", style = MaterialTheme.typography.labelLarge)
-                Text(
-                    "暗号化して端末に保存します",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(16.dp))
+                Section("文字サイズ")
+                Row {
+                    listOf("small" to "小", "medium" to "中", "large" to "大").forEach { (id, label) ->
+                        FilterChip(
+                            selected = fontScale == id,
+                            onClick = { fontScale = id },
+                            label = { Text(label) },
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+                Section("Sarashina API Key")
+                Text("暗号化して端末に保存", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(
                     value = apiKey,
                     onValueChange = { apiKey = it },
@@ -99,9 +116,8 @@ fun SettingsDialog(
                     placeholder = { Text("sk-...") }
                 )
 
-                Spacer(Modifier.height(20.dp))
-                Text("推論の深さ", style = MaterialTheme.typography.labelLarge)
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(16.dp))
+                Section("推論の深さ")
                 Row {
                     listOf("low", "medium", "high").forEach { level ->
                         FilterChip(
@@ -113,36 +129,39 @@ fun SettingsDialog(
                     }
                 }
 
-                Spacer(Modifier.height(24.dp))
-                Text("アプリロック", style = MaterialTheme.typography.labelLarge)
-                Text(
-                    "起動時・バックグラウンド復帰時にロック。生体認証（指紋・顔）や端末PIN、アプリPINに対応。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                Spacer(Modifier.height(16.dp))
+                Section("システムプロンプト")
+                TextButton(onClick = { showPromptEditor = !showPromptEditor }) {
+                    Text(if (showPromptEditor) "閉じる" else "編集する")
+                }
+                if (showPromptEditor) {
+                    OutlinedTextField(
+                        value = systemPrompt,
+                        onValueChange = { systemPrompt = it },
+                        modifier = Modifier.fillMaxWidth().height(160.dp),
+                        maxLines = 12
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+                Section("アプリロック")
+                Text("起動時にすぐ指紋認証を出します（自動）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Text("ロックを有効にする", modifier = Modifier.weight(1f))
                     Switch(checked = lockEnabled, onCheckedChange = { lockEnabled = it })
                 }
-                if (lockEnabled && lockState.canBiometric) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("生体認証 / 端末PIN", modifier = Modifier.weight(1f))
-                        Switch(checked = useBiometric, onCheckedChange = { useBiometric = it })
-                    }
-                }
                 if (lockEnabled) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        if (lockState.hasPin) "PINを変更（空欄で据え置き）" else "アプリPINを設定（4〜8桁）",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Text("起動時に自動で生体認証", modifier = Modifier.weight(1f))
+                        Switch(checked = autoBiometric, onCheckedChange = { autoBiometric = it })
+                    }
+                    if (lockState.canBiometric) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            Text("生体認証 / 端末PIN", modifier = Modifier.weight(1f))
+                            Switch(checked = useBiometric, onCheckedChange = { useBiometric = it })
+                        }
+                    }
+                    Text(if (lockState.hasPin) "PINを変更（空欄で据え置き）" else "アプリPIN（4〜8桁）", style = MaterialTheme.typography.bodySmall)
                     OutlinedTextField(
                         value = newPin,
                         onValueChange = { if (it.length <= 8 && it.all { c -> c.isDigit() }) newPin = it },
@@ -161,23 +180,15 @@ fun SettingsDialog(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    if (pinError != null) {
-                        Text(pinError!!, color = MaterialTheme.colorScheme.error)
-                    }
+                    if (pinError != null) Text(pinError!!, color = MaterialTheme.colorScheme.error)
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = {
                 if (lockEnabled && newPin.isNotEmpty()) {
-                    if (newPin.length !in 4..8) {
-                        pinError = "PINは4〜8桁"
-                        return@TextButton
-                    }
-                    if (newPin != pinConfirm) {
-                        pinError = "PINが一致しません"
-                        return@TextButton
-                    }
+                    if (newPin.length !in 4..8) { pinError = "PINは4〜8桁"; return@TextButton }
+                    if (newPin != pinConfirm) { pinError = "PINが一致しません"; return@TextButton }
                 }
                 if (lockEnabled && !lockState.hasPin && newPin.isEmpty() && !(useBiometric && lockState.canBiometric)) {
                     pinError = "PINを設定するか、生体認証を有効にしてください"
@@ -186,14 +197,19 @@ fun SettingsDialog(
                 onSaveApiKey(apiKey)
                 onSaveEffort(effort)
                 onSaveThemeMode(themeMode)
+                onSaveFontScale(fontScale)
+                onSaveSystemPrompt(systemPrompt)
+                onSaveAutoBiometric(autoBiometric)
                 onSaveLock(lockEnabled, useBiometric, newPin.ifBlank { null })
                 onDismiss()
-            }) {
-                Text("保存")
-            }
+            }) { Text("保存") }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("キャンセル") }
-        }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("キャンセル") } }
     )
+}
+
+@Composable
+private fun Section(title: String) {
+    Text(title, style = MaterialTheme.typography.labelLarge)
+    Spacer(Modifier.height(6.dp))
 }
