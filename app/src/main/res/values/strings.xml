@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Sarashina Study</string>
+    <string name="chat_hint">質問を入力…（問題文や解説してほしい内容）</string>
+    <string name="send">送信</string>
+    <string name="scan_pdf">PDFを読み込む</string>
+    <string name="scan_image">画像をスキャン</string>
+    <string name="take_photo">カメラで撮影</string>
+    <string name="settings">設定</string>
+    <string name="api_key_hint">Sarashina API Key を入力</string>
+    <string name="save">保存</string>
+    <string name="clear_history">履歴をクリア</string>
+    <string name="model_thinking">sarashina3.2-mini-thinking (推論)</string>
+</resources>
