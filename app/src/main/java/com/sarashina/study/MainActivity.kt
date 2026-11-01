@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +71,7 @@ class MainActivity : FragmentActivity() {
                 mutableStateOf(!lockManager.lockEnabled)
             }
             var lockError by remember { mutableStateOf<String?>(null) }
+            var biometricAttempted by remember { mutableStateOf(false) }
 
             DisposableEffect(Unit) {
                 val obs = object : DefaultLifecycleObserver {
@@ -82,12 +84,36 @@ class MainActivity : FragmentActivity() {
                         if (lastBackgroundAt > 0 && elapsed >= AppLockManager.RELOCK_AFTER_SECONDS) {
                             unlocked = false
                             lockError = null
+                            biometricAttempted = false
                         }
                     }
                 }
                 ProcessLifecycleOwner.get().lifecycle.addObserver(obs)
                 onDispose {
                     ProcessLifecycleOwner.get().lifecycle.removeObserver(obs)
+                }
+            }
+
+            LaunchedEffect(unlocked, lockManager.lockEnabled, uiState.autoBiometric) {
+                if (
+                    !unlocked &&
+                    lockManager.lockEnabled &&
+                    uiState.autoBiometric &&
+                    lockManager.useBiometric &&
+                    lockManager.canUseBiometric() &&
+                    !biometricAttempted
+                ) {
+                    biometricAttempted = true
+                    lockManager.authenticate(
+                        activity = this@MainActivity,
+                        onSuccess = {
+                            unlocked = true
+                            lockError = null
+                        },
+                        onError = { msg ->
+                            if (msg != "キャンセル") lockError = msg
+                        }
+                    )
                 }
             }
 
