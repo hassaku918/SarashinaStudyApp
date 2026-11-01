@@ -20,13 +20,15 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build Debug APK
+      - name: Generate Gradle Wrapper
         run: |
-          chmod +x gradlew || true
           if [ ! -f gradlew ]; then
             gradle wrapper --gradle-version 8.9
           fi
-          ./gradlew assembleDebug --no-daemon
+          chmod +x gradlew
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -35,23 +37,24 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
-      - name: Create Release (on main)
+      - name: Create Release
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.0-debug
-          name: Sarashina Study App v1.0.0 (Debug)
+          name: Sarashina Study App v1.0.0
           body: |
             受験勉強用 Sarashina AI アプリ
+
             - モデル: sarashina3.2-mini-thinking
             - PDF / 画像スキャン (OCR)
             - 会話履歴保存
-            - ダークモード対応
+            - ダークモード
 
-            **インストール方法**
-            1. 下の APK をダウンロード
-            2. Android で「提供元不明のアプリ」を許可
-            3. インストール後、設定から API Key を入力
+            **インストール**
+            1. APKをダウンロード
+            2. 「不明なアプリ」を許可してインストール
+            3. 設定から API Key を入力
           files: app/build/outputs/apk/debug/*.apk
           draft: false
           prerelease: true
