@@ -25,6 +25,8 @@ object SettingsKeys {
     val FONT_SCALE = stringPreferencesKey("font_scale")
     val AUTO_BIOMETRIC = stringPreferencesKey("auto_biometric")
     val OCR_MODE = stringPreferencesKey("ocr_mode")
+    val UI_LANG = stringPreferencesKey("ui_lang")
+    val WEB_SEARCH = stringPreferencesKey("web_search_default")
 }
 
 class SettingsRepository(private val context: Context) {
@@ -76,6 +78,14 @@ class SettingsRepository(private val context: Context) {
         prefs[SettingsKeys.OCR_MODE] ?: "exam"
     }
 
+    val uiLangFlow: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[SettingsKeys.UI_LANG] ?: "ja"
+    }
+
+    val webSearchDefaultFlow: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[SettingsKeys.WEB_SEARCH] ?: "false"
+    }
+
     suspend fun saveApiKey(key: String) {
         withContext(Dispatchers.IO) {
             encryptedPrefs.edit().putString(PREF_API_KEY, key).apply()
@@ -105,6 +115,14 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun saveOcrMode(mode: String) {
         context.dataStore.edit { it[SettingsKeys.OCR_MODE] = mode }
+    }
+
+    suspend fun saveUiLang(code: String) {
+        context.dataStore.edit { it[SettingsKeys.UI_LANG] = code }
+    }
+
+    suspend fun saveWebSearchDefault(enabled: Boolean) {
+        context.dataStore.edit { it[SettingsKeys.WEB_SEARCH] = if (enabled) "true" else "false" }
     }
 
     companion object {
