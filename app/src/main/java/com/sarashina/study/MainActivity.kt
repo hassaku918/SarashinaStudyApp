@@ -7,6 +7,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sarashina.study.ui.chat.ChatScreen
@@ -18,12 +20,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SarashinaStudyTheme {
+            val viewModel: ChatViewModel = viewModel()
+            val uiState by viewModel.uiState.collectAsState()
+
+            SarashinaStudyTheme(themeMode = uiState.themeMode) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val viewModel: ChatViewModel = viewModel()
                     ChatScreen(viewModel = viewModel)
                 }
             }
