@@ -36,27 +36,3 @@ jobs:
           name: SarashinaStudy-debug
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
-
-      - name: Create Release
-        if: github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v1.0.0-debug
-          name: Sarashina Study App v1.0.0
-          body: |
-            受験勉強用 Sarashina AI アプリ
-
-            - モデル: sarashina3.2-mini-thinking
-            - PDF / 画像スキャン (OCR)
-            - 会話履歴保存
-            - ダークモード
-
-            **インストール**
-            1. APKをダウンロード
-            2. 「不明なアプリ」を許可してインストール
-            3. 設定から API Key を入力
-          files: app/build/outputs/apk/debug/*.apk
-          draft: false
-          prerelease: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
