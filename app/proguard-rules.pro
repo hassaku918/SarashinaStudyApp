@@ -7,3 +7,4 @@
 -dontwarn okhttp3.**
 -dontwarn retrofit2.**
 -dontwarn com.google.mlkit.**
+-keep class androidx.security.crypto.** { *; }
